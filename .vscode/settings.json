@@ -1,7 +1,6 @@
 {
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": true,
-      "source.fixAll": true
     },
     "editor.formatOnSave": false,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -18,6 +17,5 @@
       "editor.defaultFormatter": "esbenp.prettier-vscode"
    },
    "files.eol": "auto",
-   "eslint.workingDirectories": [{ "mode": "auto" }]
   }
   
