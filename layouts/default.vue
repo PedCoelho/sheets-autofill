@@ -18,10 +18,9 @@
       </div>
     </nav>
 
-      <div class="section">
-        <div class="container ">
-          <div class="main-content columns">
-
+    <div class="section">
+      <div class="container">
+        <div class="main-content columns">
           <aside class="column is-2 section">
             <p class="menu-label is-hidden-touch">General</p>
             <ul class="menu-list">
@@ -32,26 +31,15 @@
               </li>
             </ul>
           </aside>
-          
 
           <div class="column">
             <nuxt />
           </div>
-
-
+        </div>
+      </div>
     </div>
   </div>
-  </div>
-    
-  </div>
 </template>
-
-<style>
-  #__nuxt, body, html{
-     /* overflow-x: auto; 
-    max-width: 100%;  */
-  }
-</style>
 
 <script>
 export default {
@@ -73,3 +61,4 @@ export default {
   },
 }
 </script>
+<style></style>
