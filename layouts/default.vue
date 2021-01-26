@@ -13,22 +13,22 @@ export default {
   components: {
     // Navbar,
   },
-  data() {
+  data () {
     return {
       items: [
         {
           title: 'Home',
           icon: 'home',
-          to: { name: 'index' },
+          to: { name: 'index' }
         },
         {
           title: 'Test',
           icon: 'lightbulb',
-          to: { name: 'test' },
-        },
-      ],
-    };
-  },
-};
+          to: { name: 'test' }
+        }
+      ]
+    }
+  }
+}
 </script>
 <style></style>

@@ -2,6 +2,13 @@ export default {
   // Disable server-side rendering: https://go.nuxtjs.dev/ssr-mode
   ssr: false,
 
+  // Environment Variables
+  env: {
+    apiKey: process.env.VUE_APP_API_KEY,
+    clientId: process.env.VUE_APP_CLIENT_ID,
+    spreadsheetId: process.env.VUE_APP_SPREADSHEET_ID,
+  },
+
   // Target: https://go.nuxtjs.dev/config-target
   target: 'static',
 
@@ -23,7 +30,7 @@ export default {
   css: [],
 
   // Plugins to run before rendering page: https://go.nuxtjs.dev/config-plugins
-  plugins: [],
+  plugins: [{ src: '~plugins/gapi.js', ssr: false, injectAs: 'gapi' }],
 
   // Auto import components: https://go.nuxtjs.dev/config-components
   components: true,
@@ -46,5 +53,17 @@ export default {
   axios: {},
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
-  build: {},
+  build: {
+    extend(config, ctx) {
+      config.module.rules.push({
+        enforce: 'pre',
+        test: /\.(js|vue)$/,
+        loader: 'eslint-loader',
+        exclude: /(node_modules)/,
+        options: {
+          fix: true,
+        },
+      });
+    },
+  },
 };
