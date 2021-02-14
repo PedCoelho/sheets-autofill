@@ -118,8 +118,14 @@ export default {
         }
       ],
 
-      activeStep: 0,
+      // Google Client API Stuff
+      GoogleAuth: undefined,
+      isAuthorized: false,
+      currentApiRequest: undefined,
 
+      activeStep: 0,
+      spreadSheetData: undefined,
+      filteredDataArray: undefined,
       showSocial: false,
       isAnimated: true,
       isRounded: true,
@@ -163,8 +169,24 @@ export default {
       return object
     }
   },
-  mounted () {
-    this.login()
+  watch: {
+    GoogleAuth: function SignIn () {
+      this.GoogleAuth.signIn()
+      this.updateSigninStatus()
+      // this.sendAuthorizedApiRequest(process.env.spreadsheetId)
+    },
+    isAuthorized: function MakeRequest (val) {
+      if (val) {
+        this.sendAuthorizedApiRequest(process.env.spreadsheetId)
+      }
+    },
+    spreadSheetData: function(data) {
+      this.filteredDataArray = data.values[0]
+    }
+  },
+  beforeMount () {
+    this.setAuth()
+    // this.sendAuthorizedApiRequest(process.env.spreadsheetId)
   },
   methods: {
     checkStep () {
@@ -177,40 +199,50 @@ export default {
         }, 400)
       }
     },
-
-    // Make sure the client is loaded and sign-in is complete before calling this method.
-    // execute() {
-    //   return gapi.client.sheets.spreadsheets
-    //     .get({
-    //       spreadsheetId: process.env.SPREADSHEET_ID,
-    //       includeGridData: false,
-    //     })
-    //     .then(
-    //       function (response) {
-    //         // Handle the results here (response.result has the parsed body).
-    //         console.log('Response', response);
-    //       },
-    //       function (err) {
-    //         console.error('Execute error', err);
-    //       }
-    //     );
-    // },
-    // randomAuth() {
-    //   gapi.load('client:auth2', function () {
-    //     gapi.auth2.init({ client_id: 'YOUR_CLIENT_ID' });
-    //   });
-    // },
-    async login () {
-      const gapiClient = await this.$gapi.getGapiClient().then((gapi) => {
+    setAuth () {
+      this.$gapi.getGapiClient().then((gapi) => {
         // gapi.sheets.spreadsheet.get(...)
         // ... authenticate() {
-        return gapi
+        this.GoogleAuth = gapi.auth2.getAuthInstance()
+        // Listen for sign-in state changes.
       })
-      const request = await gapiClient.sheets.spreadsheets.get(process.env.spreadsheetId)
-      request.then((response) => {
-        console.log(response.result)
-      })
-    }
+    },
+    updateSigninStatus () {
+      if (this.GoogleAuth.isSignedIn.de) {
+        this.isAuthorized = true
+        if (this.currentApiRequest) {
+          this.sendAuthorizedApiRequest(this.currentApiRequest)
+        }
+      } else {
+        this.isAuthorized = false
+      }
+    },
+    sendAuthorizedApiRequest (requestDetails) {
+
+      var self = this
+      this.currentApiRequest = requestDetails;
+      if (this.isAuthorized) {
+        const params = {
+        // The ID of the spreadsheet to retrieve data from.
+          spreadsheetId: this.currentApiRequest, // TODO: Update placeholder value.
+          range:'A2:A',
+          majorDimension:'COLUMNS',
+        }
+        // Make API request
+        // gapi.client.request(requestDetails)
+        this.$gapi.getGapiClient().then(function(gapi) {
+            console.log(gapi);
+             gapi.client.sheets.spreadsheets.values.get(params).then((response) =>{ self.spreadSheetData = response.result;
+            console.log(self.spreadSheetData);
+             });
+        })
+      } else if (this.GoogleAuth) {
+        this.GoogleAuth.signIn()
+        this.sendAuthorizedApiRequest(requestDetails)
+      } else {
+        return null
+      }
+    },
   }
 }
 </script>
