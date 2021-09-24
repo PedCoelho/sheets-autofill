@@ -3,12 +3,8 @@
     <section class="hero is-primary is-medium">
       <div class="hero-body container">
         <div class="container">
-          <h1 class="title">
-            Origami Sheet
-          </h1>
-          <h1 class="subtitle">
-            A page for all your spreadsheet needs
-          </h1>
+          <h1 class="title">Origami Sheet</h1>
+          <h1 class="subtitle">A page for all your spreadsheet needs</h1>
         </div>
       </div>
     </section>
@@ -41,9 +37,7 @@
             clearable
             @select="(option) => (selected = option)"
           >
-            <template #empty>
-              No results found
-            </template>
+            <template #empty> No results found </template>
           </b-autocomplete>
         </b-field>
       </b-step-item>
@@ -53,74 +47,74 @@
 
 <script>
 export default {
-  data () {
+  data() {
     return {
       stepItems: [
         {
           name: 'Modelo',
           done: false,
           kind: 'autocomplete',
-          model: undefined
+          model: undefined,
         },
         {
           name: 'Categoria',
           done: false,
           kind: 'autocomplete',
-          model: undefined
+          model: undefined,
         },
         {
           name: 'Sub-categoria',
           done: false,
           kind: 'autocomplete',
-          model: undefined
+          model: undefined,
         },
         {
           name: 'Difficulty',
           done: false,
           kind: 'number',
-          model: undefined
+          model: undefined,
         },
         {
           name: 'Enjoyment',
           done: false,
           kind: 'number',
-          model: undefined
+          model: undefined,
         },
         {
           name: 'Author',
           done: false,
           kind: 'autocomplete',
-          model: undefined
+          model: undefined,
         },
         {
           name: 'Found in',
           done: false,
           kind: 'autocomplete',
-          model: undefined
+          model: undefined,
         },
         {
           name: 'Date',
           done: false,
           kind: 'date',
-          model: undefined
+          model: undefined,
         },
         {
           name: 'Picture',
           done: false,
           kind: 'upload',
-          model: undefined
+          model: undefined,
         },
         {
           name: 'Notes',
           done: false,
           kind: 'regular',
-          model: undefined
-        }
+          model: undefined,
+        },
       ],
 
       // Google Client API Stuff
       GoogleAuth: undefined,
-      isAuthorized: false,
+      isAuthorized: undefined,
       currentApiRequest: undefined,
 
       activeStep: 0,
@@ -138,21 +132,21 @@ export default {
       prevIcon: 'chevron-left',
       nextIcon: 'chevron-right',
       labelPosition: 'bottom',
-      mobileMode: 'minimalist'
-    }
+      mobileMode: 'minimalist',
+    };
   },
   computed: {
-    modelData () {
-      const name = this.stepItems[0].model
-      const cat = this.stepItems[1].model
-      const subcat = this.stepItems[2].model
-      const challenge = this.stepItems[3].model
-      const pleasure = this.stepItems[4].model
-      const author = this.stepItems[5].model
-      const found = this.stepItems[6].model
-      const date = this.stepItems[7].model
-      const picture = this.stepItems[8].model
-      const note = this.stepItems[9].model
+    modelData() {
+      const name = this.stepItems[0].model;
+      const cat = this.stepItems[1].model;
+      const subcat = this.stepItems[2].model;
+      const challenge = this.stepItems[3].model;
+      const pleasure = this.stepItems[4].model;
+      const author = this.stepItems[5].model;
+      const found = this.stepItems[6].model;
+      const date = this.stepItems[7].model;
+      const picture = this.stepItems[8].model;
+      const note = this.stepItems[9].model;
 
       const object = {
         name,
@@ -164,87 +158,90 @@ export default {
         found,
         date,
         picture,
-        note
-      }
-      return object
-    }
+        note,
+      };
+      return object;
+    },
   },
   watch: {
-    GoogleAuth: function SignIn () {
-      this.GoogleAuth.signIn()
-      this.updateSigninStatus()
-      // this.sendAuthorizedApiRequest(process.env.spreadsheetId)
-    },
-    isAuthorized: function MakeRequest (val) {
+    isAuthorized(val) {
       if (val) {
-        this.sendAuthorizedApiRequest(process.env.spreadsheetId)
+        this.sendAuthorizedApiRequest(process.env.spreadsheetId);
       }
     },
-    spreadSheetData: function(data) {
-      this.filteredDataArray = data.values[0]
-    }
+    spreadSheetData: function (data) {
+      this.filteredDataArray = data.values[0];
+    },
   },
-  beforeMount () {
-    this.setAuth()
-    // this.sendAuthorizedApiRequest(process.env.spreadsheetId)
+  mounted() {
+    this.authSetup();
   },
   methods: {
-    checkStep () {
-      const item = this.stepItems[this.activeStep]
+    checkStep() {
+      const item = this.stepItems[this.activeStep];
 
       if (!item.done) {
-        item.done = true
+        item.done = true;
         setTimeout(() => {
-          this.activeStep++
-        }, 400)
+          this.activeStep++;
+        }, 400);
       }
     },
-    setAuth () {
-      this.$gapi.getGapiClient().then((gapi) => {
-        // gapi.sheets.spreadsheet.get(...)
-        // ... authenticate() {
-        this.GoogleAuth = gapi.auth2.getAuthInstance()
-        // Listen for sign-in state changes.
-      })
-    },
-    updateSigninStatus () {
-      if (this.GoogleAuth.isSignedIn.de) {
-        this.isAuthorized = true
-        if (this.currentApiRequest) {
-          this.sendAuthorizedApiRequest(this.currentApiRequest)
-        }
-      } else {
-        this.isAuthorized = false
-      }
-    },
-    sendAuthorizedApiRequest (requestDetails) {
+    async authSetup() {
+      let gapi = await this.$gapi.getGapiClient();
+      let googleAuth = await gapi.auth2.getAuthInstance();
+      this.GoogleAuth = googleAuth;
 
-      var self = this
+      this.isAuthorized = googleAuth.isSignedIn.get();
+
+      if (!this.isAuthorized) {
+        this.isAuthorized = await this.loginAttempt(googleAuth);
+      }
+    },
+    async loginAttempt(auth_instance) {
+      console.log('Attempting login');
+      try {
+        let response = await auth_instance.signIn();
+        if (!response) return false;
+        let logged_in = response.isSignedIn();
+        return logged_in;
+      } catch (e) {
+        console.error(e);
+        return false;
+      }
+    },
+    async sendAuthorizedApiRequest(requestDetails) {
+      var self = this;
       this.currentApiRequest = requestDetails;
       if (this.isAuthorized) {
         const params = {
-        // The ID of the spreadsheet to retrieve data from.
-          spreadsheetId: this.currentApiRequest, // TODO: Update placeholder value.
-          range:'A2:A',
-          majorDimension:'COLUMNS',
-        }
+          // The ID of the spreadsheet to retrieve data from.
+          spreadsheetId: this.currentApiRequest,
+          range: 'A:J',
+          majorDimension: 'ROWS',
+        };
         // Make API request
         // gapi.client.request(requestDetails)
-        this.$gapi.getGapiClient().then(function(gapi) {
-            console.log(gapi);
-             gapi.client.sheets.spreadsheets.values.get(params).then((response) =>{ self.spreadSheetData = response.result;
-            console.log(self.spreadSheetData);
-             });
-        })
+        this.$gapi.getGapiClient().then(function (gapi) {
+          console.log(gapi);
+          gapi.client.sheets.spreadsheets.values
+            .get(params)
+            .then((response) => {
+              self.spreadSheetData = response.result;
+              console.log(self.spreadSheetData);
+            });
+        });
       } else if (this.GoogleAuth) {
-        this.GoogleAuth.signIn()
-        this.sendAuthorizedApiRequest(requestDetails)
-      } else {
-        return null
+        let logged_in = await this.loginAttempt(this.GoogleAuth);
+        if (logged_in) this.sendAuthorizedApiRequest(requestDetails);
+        else
+          alert(
+            'User needs to be signed in before making request to Google Sheets API'
+          );
       }
     },
-  }
-}
+  },
+};
 </script>
 
 <style></style>

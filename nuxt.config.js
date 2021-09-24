@@ -1,12 +1,14 @@
+
+
 export default {
   // Disable server-side rendering: https://go.nuxtjs.dev/ssr-mode
   ssr: false,
 
   // Environment Variables
   env: {
-    apiKey: process.env.VUE_APP_API_KEY,
-    clientId: process.env.VUE_APP_CLIENT_ID,
-    spreadsheetId: process.env.VUE_APP_SPREADSHEET_ID,
+    apiKey: process.env.API_KEY,
+    clientId: process.env.CLIENT_ID,
+    spreadsheetId: process.env.SPREADSHEET_ID,
   },
 
   // Target: https://go.nuxtjs.dev/config-target
