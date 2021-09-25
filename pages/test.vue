@@ -25,14 +25,14 @@
         :type="{ 'is-success': item.done }"
         :step="index + 1"
         :label="item.name"
-        :clickable="isStepsClickable"
+        :clickable="true"
       >
-        <b-field>
+        <b-field v-if="item.type == 'autocomplete'">
           <b-autocomplete
             v-model="item.model"
             class="container"
             rounded
-            :data="filteredDataArray"
+            :data="autoCompleteData[index]"
             icon="magnify"
             clearable
             @select="(option) => (selected = option)"
@@ -40,6 +40,21 @@
             <template #empty> No results found </template>
           </b-autocomplete>
         </b-field>
+        <input
+          v-else-if="item.type == 'file'"
+          :type="item.type"
+          accept="image/*"
+          capture
+          @change="readImage"
+        />
+
+        <b-input
+          v-else
+          v-model="item.model"
+          min="0"
+          max="10"
+          :type="item.type"
+        ></b-input>
       </b-step-item>
     </b-steps>
   </div>
@@ -53,61 +68,61 @@ export default {
         {
           name: 'Modelo',
           done: false,
-          kind: 'autocomplete',
+          type: 'autocomplete',
           model: undefined,
         },
         {
           name: 'Categoria',
           done: false,
-          kind: 'autocomplete',
+          type: 'autocomplete',
           model: undefined,
         },
         {
           name: 'Sub-categoria',
           done: false,
-          kind: 'autocomplete',
+          type: 'autocomplete',
           model: undefined,
         },
         {
           name: 'Difficulty',
           done: false,
-          kind: 'number',
+          type: 'number',
           model: undefined,
         },
         {
           name: 'Enjoyment',
           done: false,
-          kind: 'number',
+          type: 'number',
           model: undefined,
         },
         {
           name: 'Author',
           done: false,
-          kind: 'autocomplete',
+          type: 'autocomplete',
           model: undefined,
         },
         {
           name: 'Found in',
           done: false,
-          kind: 'autocomplete',
+          type: 'autocomplete',
           model: undefined,
         },
         {
           name: 'Date',
           done: false,
-          kind: 'date',
+          type: 'datetime-local',
           model: undefined,
         },
         {
           name: 'Picture',
           done: false,
-          kind: 'upload',
+          type: 'file',
           model: undefined,
         },
         {
           name: 'Notes',
           done: false,
-          kind: 'regular',
+          type: 'text',
           model: undefined,
         },
       ],
@@ -127,7 +142,6 @@ export default {
 
       hasNavigation: true,
       customNavigation: false,
-      isProfileSuccess: false,
 
       prevIcon: 'chevron-left',
       nextIcon: 'chevron-right',
@@ -162,15 +176,25 @@ export default {
       };
       return object;
     },
+
+    autoCompleteData() {
+      let valores = this.spreadSheetData?.values;
+      if (valores) {
+        return valores.map(([header, ...rest]) =>
+          [...new Set(rest)]
+            .filter((x) => Boolean(x.length))
+            .sort((a, b) => a.localeCompare(b))
+        );
+      } else {
+        return [];
+      }
+    },
   },
   watch: {
     isAuthorized(val) {
       if (val) {
         this.sendAuthorizedApiRequest(process.env.spreadsheetId);
       }
-    },
-    spreadSheetData: function (data) {
-      this.filteredDataArray = data.values[0];
     },
   },
   mounted() {
@@ -217,8 +241,8 @@ export default {
         const params = {
           // The ID of the spreadsheet to retrieve data from.
           spreadsheetId: this.currentApiRequest,
-          range: 'A:J',
-          majorDimension: 'ROWS',
+          range: 'Main',
+          majorDimension: 'COLUMNS',
         };
         // Make API request
         // gapi.client.request(requestDetails)
@@ -238,6 +262,23 @@ export default {
           alert(
             'User needs to be signed in before making request to Google Sheets API'
           );
+      }
+    },
+    readImage(evt) {
+      console.log(evt);
+      let self = this;
+      if (evt.target.files && evt.target.files[0]) {
+        var reader = new FileReader();
+
+        reader.onload = function (e) {
+          console.log(e.target.result);
+          if (e.target.result) {
+            self.stepItems.filter((x) => x.name == 'Picture')[0].model =
+              e.target.result;
+          }
+        };
+
+        reader.readAsDataURL(evt.target.files[0]);
       }
     },
   },
