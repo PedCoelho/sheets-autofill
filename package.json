@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nuxt",
-    "build": "nuxt build",
+    "build": "nuxt build && -gh-pages -d dist",
     "start": "nuxt start",
     "generate": "nuxt generate",
     "test": "jest"
@@ -14,6 +14,7 @@
     "core-js": "^3.8.2",
     "dotenv": "^10.0.0",
     "eslint-loader": "^4.0.2",
+    "gh-pages": "^3.2.3",
     "nuxt": "^2.15.8",
     "nuxt-buefy": "^0.4.4",
     "vue-gapi": "^1.1.0"
