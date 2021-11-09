@@ -4,6 +4,10 @@ export default {
   // Disable server-side rendering: https://go.nuxtjs.dev/ssr-mode
   ssr: false,
 
+  router: {
+    base: '/sheets-autofill/'
+  },
+
   // Environment Variables
   env: {
     apiKey: process.env.API_KEY,

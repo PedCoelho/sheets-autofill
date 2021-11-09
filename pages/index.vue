@@ -33,23 +33,18 @@
               @keydown.enter.native="handleEnter"
               v-model="item.model"
               class="container"
-              keep-first
               rounded
               :data="filterOptions(item.model, autoCompleteData[index])"
               icon="magnify"
               clearable
-              @select="(option) => (selected = option)"
+              @select="handleEnter($event)"
             >
               <template #empty> No results found </template>
             </b-autocomplete>
           </b-field>
-          <input
-            v-else-if="item.type == 'file'"
-            :type="item.type"
-            accept="image/*"
-            capture
-            @change="readImage"
-          />
+          <div id="image" v-else-if="item.type == 'file'">
+            <input :type="item.type" accept="image/*" @change="readImage" />
+          </div>
 
           <b-input
             v-else
@@ -78,19 +73,19 @@ export default {
       positive_feedback: '',
       stepItems: [
         {
-          name: 'Modelo',
+          name: 'Model',
           done: false,
           type: 'autocomplete',
           model: undefined,
         },
         {
-          name: 'Categoria',
+          name: 'Category',
           done: false,
           type: 'autocomplete',
           model: undefined,
         },
         {
-          name: 'Sub-categoria',
+          name: 'Sub-category',
           done: false,
           type: 'autocomplete',
           model: undefined,
@@ -249,6 +244,7 @@ export default {
   },
   mounted() {
     this.authSetup();
+
     let date = new Date();
     this.stepItems[7].model =
       date.toISOString().substr(0, 10) + 'T' + date.toLocaleTimeString();
@@ -265,18 +261,25 @@ export default {
       }
     },
     async authSetup() {
-      let gapi = await this.$gapi.getGapiClient();
-      let googleAuth = await gapi.auth2.getAuthInstance();
-      this.GoogleAuth = googleAuth;
+      try {
+        let gapi = await this.$gapi.getGapiClient();
+        let googleAuth = await gapi.auth2.getAuthInstance();
+        this.GoogleAuth = googleAuth;
 
-      this.isAuthorized = googleAuth.isSignedIn.get();
+        this.isAuthorized = googleAuth.isSignedIn.get();
 
-      if (!this.isAuthorized) {
-        this.isAuthorized = await this.loginAttempt(googleAuth);
+        if (!this.isAuthorized) {
+          this.positive_feedback = 'Attempting Google oAuth2.0';
+
+          this.isAuthorized = await this.loginAttempt(googleAuth);
+        }
+      } catch (e) {
+        this.positive_feedback = '';
+        this.feedback = e.error.message;
       }
     },
     async loginAttempt(auth_instance) {
-      console.log('Attempting login');
+      this.positive_feedback = 'Attempting login';
       try {
         let response = await auth_instance.signIn();
         if (!response) return false;
@@ -299,7 +302,6 @@ export default {
           majorDimension: 'COLUMNS',
         };
         // Make API request
-        // gapi.client.request(requestDetails)
         this.$gapi.getGapiClient().then(function (gapi) {
           console.log(gapi);
           gapi.client.sheets.spreadsheets.values
@@ -330,6 +332,7 @@ export default {
     },
     handleEnter(evt) {
       console.log(evt);
+      if (!evt) return;
       this.activeStep += 1;
     },
     readImage(evt) {
@@ -339,15 +342,120 @@ export default {
         var reader = new FileReader();
 
         reader.onload = function (e) {
-          console.log(e.target.result);
           if (e.target.result) {
-            self.stepItems.filter((x) => x.name == 'Picture')[0].model =
-              e.target.result;
+            self
+              .shrinkImage(e.target.result)
+              .then(
+                (response) =>
+                  (self.stepItems.filter(
+                    (x) => x.name == 'Picture'
+                  )[0].model = `"${response}"`)
+              );
           }
         };
 
         reader.readAsDataURL(evt.target.files[0]);
       }
+    },
+    imageOverLimit(imageDataURL) {
+      const CELL_LIMIT = 50000;
+      const imageLength = imageDataURL.length;
+      const difference = CELL_LIMIT - imageLength;
+
+      let biggerByPercent = 0;
+
+      if (difference < 0) {
+        biggerByPercent = (-difference * 100) / imageLength;
+      }
+
+      return {
+        limit_exceeded: difference < 0,
+        difference,
+        biggerByPercent,
+      };
+    },
+    async shrinkImage(imageDataURL) {
+      console.group(`shrinkImage`);
+      let shouldShrink = this.imageOverLimit(imageDataURL);
+      console.log(shouldShrink);
+
+      let smallerImg;
+
+      while (shouldShrink.limit_exceeded) {
+        console.group(
+          `shouldShrink by ${shouldShrink.biggerByPercent.toFixed(2)}%`
+        );
+        console.log(`length difference: ${shouldShrink.difference}`);
+
+        smallerImg = await this.resizeBase64Img(
+          imageDataURL,
+          shouldShrink.biggerByPercent
+        );
+
+        imageDataURL = smallerImg.base64URL;
+        console.log(`smallerImg: ${smallerImg.resolution}`);
+
+        shouldShrink = this.imageOverLimit(imageDataURL);
+        console.groupEnd();
+      }
+
+      console.groupEnd();
+      return smallerImg.base64URL;
+    },
+    /**
+     * Resize a base 64 Image
+     * @param {String} base64 - The base64 string (must include MIME type)
+     * @param {Number} newWidth - The width of the image in pixels
+     * @param {Number} newHeight - The height of the image in pixels
+     */
+    resizeBase64Img(base64, factor) {
+      return new Promise((resolve, reject) => {
+        var canvas = document.createElement('canvas');
+        let ctx = canvas.getContext('2d');
+        let img = document.createElement('img');
+        img.src = base64;
+
+        img.onload = function () {
+          // let reduceBy = (factor, total) => (factor * total) / 100;
+          // let reducedW = img.width - reduceBy(factor, img.width);
+          // let reducedH = img.height - reduceBy(factor, img.height);
+
+          let scaleFactor = 1 - factor / 100;
+
+          window.img = img;
+
+          let reducedW = parseInt(img.width * scaleFactor);
+          let reducedH = parseInt(img.height * scaleFactor);
+
+          canvas.style.width = reducedW.toString() + 'px';
+          canvas.style.height = reducedH.toString() + 'px';
+
+          // window.ctx = ctx;
+          canvas.width = reducedW;
+          canvas.height = reducedH;
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+
+          // window.canvas = canvas;
+          ctx.scale(scaleFactor, scaleFactor);
+
+          ctx.drawImage(img, 0, 0);
+
+          let drawnCanvas = document.querySelector('#image canvas');
+
+          if (!drawnCanvas) {
+            document.getElementById('image').prepend(canvas);
+          } else {
+            document.getElementById('image').replaceChild(canvas, drawnCanvas);
+          }
+
+          resolve({
+            resolution: `${reducedW}x${reducedH}`,
+            base64URL: canvas.toDataURL(),
+          });
+        };
+      });
     },
     checkRequired() {
       let required = ['name', 'cat', 'subcat', 'challenge', 'pleasure', 'date'];
@@ -361,11 +469,18 @@ export default {
     },
     sendData() {
       this.feedback = '';
+      this.positive_feedback = '';
+
       let ok = this.checkRequired();
       ok = true;
+
       if (ok === true) {
         // send data
-        this.appendToSheetRequest();
+        try {
+          this.appendToSheetRequest();
+        } catch (e) {
+          this.feedback = e;
+        }
       } else {
         this.feedback = `Faltando valores obrigatórios: ${ok.join(', ')}`;
       }
@@ -422,7 +537,7 @@ export default {
         await this.addEmptyRowAndPasteData();
       } else if (this.GoogleAuth) {
         let logged_in = await this.loginAttempt(this.GoogleAuth);
-        if (logged_in) this.appendToSheetRequest(requestDetails);
+        if (logged_in) this.appendToSheetRequest();
         else
           this.feedback =
             'User needs to be signed in before making request to Google Sheets API';
@@ -440,5 +555,18 @@ export default {
 .feedback-text-positive {
   color: green;
   margin-bottom: 1rem;
+}
+
+#image {
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  align-items: center;
+}
+#image canvas {
+  margin-bottom: 1rem;
+}
+.column {
+  padding: unset;
 }
 </style>
